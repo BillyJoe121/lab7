@@ -4,6 +4,7 @@ import 'package:moviles_auth/features/auth/domain/entities/profile.dart';
 import 'package:moviles_auth/features/auth/domain/repository/auth_repository.dart';
 import 'package:moviles_auth/features/auth/domain/repository/profile_repository.dart';
 import 'package:moviles_auth/features/avatar/data/repository/avatar_repository_impl.dart';
+import 'package:moviles_auth/features/avatar/domain/entities/photo_source.dart';
 import 'package:moviles_auth/features/avatar/domain/repository/avatar_repository.dart';
 
 /// Uploads a new profile photo, points the profile to it and deletes the old one.
@@ -13,10 +14,10 @@ class ChangeAvatarUseCase {
   final ProfileRepository _profiles = ProfileRepositoryImpl();
   final AvatarRepository _avatars = AvatarRepositoryImpl();
 
-  Future<Profile?> call() async {
+  Future<Profile?> call(PhotoSource source) async {
     final user = _auth.currentUser();
     if (user == null) throw Exception('No hay una sesión iniciada');
-    final photo = await _avatars.pick();
+    final photo = await _avatars.pick(source);
     if (photo == null) return null;
     if (photo.bytes.length > maxBytes) {
       throw Exception('La foto pesa más de 2 MB');

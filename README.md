@@ -66,3 +66,12 @@ ComposeBloc recibió ComposePhotoRequested()
 - `compose/ui/screens/compose_screen.dart`: que *Agregar foto* lance `ComposePhotoRequested`.
 
 `flutter test` comprueba que la interfaz lanza los eventos correctos.
+
+## Retos
+
+1. **Cada quien escribe solo en su carpeta.** La migración `20261113130000_storage_own_folder.sql` deja leer ambos buckets con sesión, pero solo permite subir, actualizar y borrar cuando `(storage.foldername(name))[1] = (select auth.uid()::text)`. Las rutas ya empiezan por el uid (`<uid>/<uuid>.<ext>`).
+2. **Galería o cámara.** `showPhotoSourceSheet` (en `lib/components/photo_source_sheet.dart`) abre un bottom sheet. El dominio usa su propio `enum PhotoSource { gallery, camera }` y solo `DevicePhotoDataSource` lo traduce a `ImageSource` de image_picker.
+3. **Quitar la foto de perfil.** `RemoveAvatarUseCase` primero pone `avatar_path` en `null` y después borra el archivo, para que el perfil nunca apunte a un archivo que ya no existe.
+4. **`cached_network_image`.** `Avatar` y `PostCard` lo usan en lugar de `Image.network`. *¿Ayuda con las URLs firmadas?* No por sí solo: la caché se indexa por URL y cada carga del muro firma una URL nueva (con otro `token`), así que nunca habría acierto. Por eso `PostCard` usa `cacheKey: post.imagePath`, porque la ruta es estable aunque la URL cambie. En los avatares sí ayuda directamente, porque la URL pública es fija.
+5. **Borrar un post borra su imagen.** `DeletePostUseCase` solo deja borrar posts propios. Borra la fila y luego el archivo del bucket. El botón aparece solo en los posts propios y pide confirmación.
+6. **Firmas en lote.** `signPostImages` junta las rutas de la página y hace una sola llamada a `createSignedUrlsResult(paths, 3600)` en lugar de una por post. Lo usan `GetFeedUseCase` y `GetMyPostsUseCase`.

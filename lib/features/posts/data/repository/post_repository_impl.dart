@@ -1,4 +1,5 @@
 import 'package:moviles_auth/features/avatar/data/source/device_photo_data_source.dart';
+import 'package:moviles_auth/features/avatar/domain/entities/photo_source.dart';
 import 'package:moviles_auth/features/avatar/domain/entities/picked_photo.dart';
 import 'package:moviles_auth/features/posts/data/source/supabase_post_data_source.dart';
 import 'package:moviles_auth/features/posts/data/source/supabase_post_image_data_source.dart';
@@ -27,6 +28,11 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
+  Future<void> delete(String postId) {
+    return _dataSource.delete(postId);
+  }
+
+  @override
   Future<void> like(String postId) {
     return _dataSource.like(postId);
   }
@@ -37,8 +43,8 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<PickedPhoto?> pickImage() {
-    return _device.pick();
+  Future<PickedPhoto?> pickImage(PhotoSource source) {
+    return _device.pick(source);
   }
 
   @override
@@ -47,7 +53,12 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<String> imageUrl(String path) {
-    return _images.signedUrl(path);
+  Future<void> removeImage(String path) {
+    return _images.remove(path);
+  }
+
+  @override
+  Future<Map<String, String>> imageUrls(List<String> paths) {
+    return _images.signedUrls(paths);
   }
 }

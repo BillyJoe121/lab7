@@ -2,9 +2,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:moviles_auth/features/auth/domain/usecases/get_my_profile_usecase.dart';
 import 'package:moviles_auth/features/auth/domain/usecases/sign_out_usecase.dart';
 import 'package:moviles_auth/features/avatar/domain/usecases/change_avatar_usecase.dart';
+import 'package:moviles_auth/features/avatar/domain/usecases/remove_avatar_usecase.dart';
 import 'package:moviles_auth/features/home/ui/bloc/feed_event.dart';
 import 'package:moviles_auth/features/home/ui/bloc/feed_state.dart';
 import 'package:moviles_auth/features/posts/domain/entities/post.dart';
+import 'package:moviles_auth/features/posts/domain/usecases/delete_post_usecase.dart';
 import 'package:moviles_auth/features/posts/domain/usecases/get_feed_usecase.dart';
 import 'package:moviles_auth/features/posts/domain/usecases/get_my_posts_usecase.dart';
 import 'package:moviles_auth/features/posts/domain/usecases/toggle_like_usecase.dart';
@@ -18,6 +20,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   final GetMyPostsUseCase _getMyPosts = GetMyPostsUseCase();
   final ToggleLikeUseCase _toggleLike = ToggleLikeUseCase();
   final ChangeAvatarUseCase _changeAvatar = ChangeAvatarUseCase();
+  final RemoveAvatarUseCase _removeAvatar = RemoveAvatarUseCase();
+  final DeletePostUseCase _deletePost = DeletePostUseCase();
 
   FeedBloc() : super(const FeedState()) {
     on<ProfileRequested>(_onProfileRequested);
@@ -26,6 +30,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<FeedMoreRequested>(_onMoreRequested);
     on<FeedLikeToggled>(_onLikeToggled);
     on<AvatarChangeRequested>(_onAvatarChangeRequested);
+    on<AvatarRemoveRequested>(_onAvatarRemoveRequested);
+    on<FeedPostDeleted>(_onPostDeleted);
   }
 
   String _message(Exception e) {
@@ -104,7 +110,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   ) async {
     emit(state.copyWith(avatarStatus: AvatarStatus.uploading));
     try {
-      final profile = await _changeAvatar();
+      final profile = await _changeAvatar(event.source);
       if (profile == null) {
         emit(state.copyWith(avatarStatus: AvatarStatus.idle));
         return;
@@ -117,6 +123,51 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           avatarStatus: AvatarStatus.failure,
           errorMessage: _message(e),
         ),
+      );
+    }
+  }
+
+  Future<void> _onAvatarRemoveRequested(
+    AvatarRemoveRequested event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(state.copyWith(avatarStatus: AvatarStatus.uploading));
+    try {
+      final profile = await _removeAvatar();
+      emit(state.copyWith(profile: profile, avatarStatus: AvatarStatus.idle));
+      add(FeedStarted());
+    } on Exception catch (e) {
+      emit(
+        state.copyWith(
+          avatarStatus: AvatarStatus.failure,
+          errorMessage: _message(e),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onPostDeleted(
+    FeedPostDeleted event,
+    Emitter<FeedState> emit,
+  ) async {
+    try {
+      await _deletePost(event.post);
+      List<Post> without(List<Post> list) {
+        return [
+          for (final post in list)
+            if (post.id != event.post.id) post,
+        ];
+      }
+
+      emit(
+        state.copyWith(
+          posts: without(state.posts),
+          myPosts: without(state.myPosts),
+        ),
+      );
+    } on Exception catch (e) {
+      emit(
+        state.copyWith(status: FeedStatus.failure, errorMessage: _message(e)),
       );
     }
   }

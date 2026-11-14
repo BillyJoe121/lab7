@@ -10,6 +10,7 @@ class Post {
   final String? imageUrl;
   final int likeCount;
   final bool likedByMe;
+  final bool isMine;
 
   const Post({
     required this.id,
@@ -22,6 +23,7 @@ class Post {
     this.imageUrl,
     required this.likeCount,
     required this.likedByMe,
+    this.isMine = false,
   });
 
   Post copyWith({int? likeCount, bool? likedByMe, String? imageUrl}) {
@@ -36,6 +38,7 @@ class Post {
       imageUrl: imageUrl ?? this.imageUrl,
       likeCount: likeCount ?? this.likeCount,
       likedByMe: likedByMe ?? this.likedByMe,
+      isMine: isMine,
     );
   }
 

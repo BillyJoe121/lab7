@@ -1,15 +1,23 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:moviles_auth/components/avatar.dart';
 import 'package:moviles_auth/features/posts/domain/entities/post.dart';
 import 'package:moviles_auth/theme/app_theme.dart';
 
-/// Card of one post: author with photo, text, image, date and the heart with its counter.
+/// Card of one post: author with photo, text, image, date, the heart with its counter
+/// and, on the posts of the signed in user, the button to delete it.
 class PostCard extends StatelessWidget {
   final Post post;
   final Function() onLike;
+  final Function() onDelete;
 
-  const PostCard({super.key, required this.post, required this.onLike});
+  const PostCard({
+    super.key,
+    required this.post,
+    required this.onLike,
+    required this.onDelete,
+  });
 
   String _date(DateTime date) {
     final local = date.toLocal();
@@ -83,10 +91,12 @@ class PostCard extends StatelessWidget {
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Image.network(
-                post.imageUrl!,
+              // The signed URL changes on every load: the path keeps the cache entry stable.
+              child: CachedNetworkImage(
+                imageUrl: post.imageUrl!,
+                cacheKey: post.imagePath,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
+                errorWidget: (context, url, error) =>
                     const Center(child: Icon(Icons.broken_image_outlined)),
               ),
             ),
@@ -101,6 +111,14 @@ class PostCard extends StatelessWidget {
                 ),
               ),
               Text('${post.likeCount}'),
+              const Spacer(),
+              if (post.isMine)
+                IconButton(
+                  onPressed: () => onDelete(),
+                  icon: const Icon(Icons.delete_outline),
+                  color: AppColors.textSecondary,
+                  tooltip: 'Borrar post',
+                ),
             ],
           ),
         ],

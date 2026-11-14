@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moviles_auth/components/avatar.dart';
+import 'package:moviles_auth/components/photo_source_sheet.dart';
 import 'package:moviles_auth/features/auth/domain/entities/profile.dart';
+import 'package:moviles_auth/features/avatar/domain/entities/photo_source.dart';
 import 'package:moviles_auth/features/avatar/domain/entities/picked_photo.dart';
 import 'package:moviles_auth/features/compose/ui/bloc/compose_bloc.dart';
 import 'package:moviles_auth/features/compose/ui/bloc/compose_event.dart';
@@ -16,6 +18,8 @@ import 'package:moviles_auth/features/home/ui/bloc/feed_state.dart';
 import 'package:moviles_auth/features/home/ui/pages/feed_page.dart';
 import 'package:moviles_auth/features/home/ui/screens/home_screen.dart';
 import 'package:moviles_auth/features/posts/domain/entities/post.dart';
+import 'package:moviles_auth/features/posts/domain/repository/post_repository.dart';
+import 'package:moviles_auth/features/posts/domain/usecases/sign_post_images.dart';
 
 class _FakeFeedBloc extends Bloc<FeedEvent, FeedState> implements FeedBloc {
   _FakeFeedBloc() : super(const FeedState()) {
@@ -136,15 +140,36 @@ class _EventRecorder extends BlocObserver {
   }
 }
 
-Post _post(String id, {int likes = 0, bool mine = false}) => Post(
+Post _post(
+  String id, {
+  int likes = 0,
+  bool mine = false,
+  bool own = false,
+  String? imagePath,
+}) => Post(
   id: id,
   content: 'Contenido de $id',
   createdAt: DateTime(2026, 10, 18, 10, 5),
   authorUsername: 'ana.dev',
   authorName: 'Ana Gómez',
+  imagePath: imagePath,
   likeCount: likes,
   likedByMe: mine,
+  isMine: own,
 );
+
+class _FakePostRepository implements PostRepository {
+  final List<List<String>> signRequests = [];
+
+  @override
+  Future<Map<String, String>> imageUrls(List<String> paths) async {
+    signRequests.add(paths);
+    return {for (final path in paths) path: 'https://signed/$path'};
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 const _profile = Profile(id: 'u1', username: 'ana.dev', fullName: 'Ana Gómez');
 
@@ -210,6 +235,7 @@ void main() {
             isLoading: false,
             onLoadMore: () => more++,
             onLike: (post) => liked = post,
+            onDelete: (post) {},
           ),
         ),
       ),
@@ -220,6 +246,71 @@ void main() {
     expect(liked?.id, 'p1');
     await tester.tap(find.text('Mostrar más'));
     expect(more, 1);
+  });
+
+  testWidgets('PostCard offers deleting only on posts of the user', (
+    tester,
+  ) async {
+    Post? deleted;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FeedPage(
+            posts: [_post('p1'), _post('p2', own: true)],
+            hasMore: false,
+            isLoading: false,
+            onLoadMore: () {},
+            onLike: (post) {},
+            onDelete: (post) => deleted = post,
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    expect(deleted?.id, 'p2');
+  });
+
+  test('signPostImages signs every image of the page in one request', () async {
+    final repository = _FakePostRepository();
+    final page = [
+      _post('p1', imagePath: 'u1/a.jpg'),
+      _post('p2'),
+      _post('p3', imagePath: 'u1/b.png'),
+    ];
+    final signed = await signPostImages(repository, page);
+    expect(repository.signRequests, [
+      ['u1/a.jpg', 'u1/b.png'],
+    ]);
+    expect(signed[0].imageUrl, 'https://signed/u1/a.jpg');
+    expect(signed[1].imageUrl, isNull);
+    expect(signed[2].imageUrl, 'https://signed/u1/b.png');
+  });
+
+  test('signPostImages skips the request when no post has an image', () async {
+    final repository = _FakePostRepository();
+    await signPostImages(repository, [_post('p1')]);
+    expect(repository.signRequests, isEmpty);
+  });
+
+  testWidgets('The photo sheet returns the chosen source', (tester) async {
+    PhotoSource? chosen;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => chosen = await showPhotoSourceSheet(context),
+            child: const Text('Abrir'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Abrir'));
+    await tester.pumpAndSettle();
+    expect(find.text('Elegir de la galería'), findsOneWidget);
+    await tester.tap(find.text('Tomar una foto'));
+    await tester.pumpAndSettle();
+    expect(chosen, PhotoSource.camera);
   });
 
   testWidgets('HomeScreen sends events to FeedBloc and switches pages', (

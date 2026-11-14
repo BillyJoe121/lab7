@@ -1,3 +1,4 @@
+import 'package:moviles_auth/features/avatar/domain/entities/photo_source.dart';
 import 'package:moviles_auth/features/posts/domain/entities/post.dart';
 
 /// Something the home screen asks the FeedBloc to do.
@@ -47,10 +48,34 @@ class FeedLikeToggled extends FeedEvent {
   }
 }
 
-/// The user wants a new profile photo from the gallery.
+/// The user wants a new profile photo from the gallery or the camera.
 class AvatarChangeRequested extends FeedEvent {
+  final PhotoSource source;
+
+  AvatarChangeRequested(this.source);
+
   @override
   String toString() {
-    return 'AvatarChangeRequested()';
+    return 'AvatarChangeRequested(${source.name})';
+  }
+}
+
+/// The user wants to stay without profile photo.
+class AvatarRemoveRequested extends FeedEvent {
+  @override
+  String toString() {
+    return 'AvatarRemoveRequested()';
+  }
+}
+
+/// The user confirmed deleting one of their posts.
+class FeedPostDeleted extends FeedEvent {
+  final Post post;
+
+  FeedPostDeleted(this.post);
+
+  @override
+  String toString() {
+    return 'FeedPostDeleted($post)';
   }
 }

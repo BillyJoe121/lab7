@@ -24,7 +24,7 @@ class ComposeBloc extends Bloc<ComposeEvent, ComposeState> {
     Emitter<ComposeState> emit,
   ) async {
     try {
-      final photo = await _pickImage();
+      final photo = await _pickImage(event.source);
       if (photo == null) return;
       emit(state.copyWith(status: ComposeStatus.initial, photo: photo));
     } on Exception catch (e) {

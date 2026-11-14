@@ -6,7 +6,7 @@ class SupabasePostDataSource {
   final SupabaseClient _client = Supabase.instance.client;
 
   static const _columns =
-      'id, content, image_path, created_at, '
+      'id, profile_id, content, image_path, created_at, '
       'author:profiles!profile_id(username, full_name, avatar_path), '
       'likes(count), '
       'my_like:likes(profile_id)';
@@ -57,6 +57,14 @@ class SupabasePostDataSource {
     }
   }
 
+  Future<void> delete(String postId) async {
+    try {
+      await _client.from('posts').delete().eq('id', postId).eq('profile_id', _uid);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   Future<void> like(String postId) async {
     try {
       await _client.from('likes').upsert({
@@ -95,6 +103,7 @@ class SupabasePostDataSource {
       imagePath: row['image_path'] as String?,
       likeCount: (row['likes'] as List).first['count'] as int,
       likedByMe: (row['my_like'] as List).isNotEmpty,
+      isMine: row['profile_id'] == _uid,
     );
   }
 }

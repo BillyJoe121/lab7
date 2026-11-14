@@ -32,9 +32,24 @@ class SupabasePostImageDataSource {
     }
   }
 
-  Future<String> signedUrl(String path) async {
+  Future<void> remove(String path) async {
     try {
-      return await _client.storage.from(bucket).createSignedUrl(path, 3600);
+      await _client.storage.from(bucket).remove([path]);
+    } on StorageException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Signs every path in a single request and keeps only the ones that succeeded.
+  Future<Map<String, String>> signedUrls(List<String> paths) async {
+    try {
+      final results = await _client.storage
+          .from(bucket)
+          .createSignedUrlsResult(paths, 3600);
+      return {
+        for (final result in results)
+          if (result is SignedUrlSuccess) result.path: result.signedUrl,
+      };
     } on StorageException catch (e) {
       throw Exception(e.message);
     }

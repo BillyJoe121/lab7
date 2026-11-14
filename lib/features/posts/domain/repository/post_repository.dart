@@ -1,3 +1,4 @@
+import 'package:moviles_auth/features/avatar/domain/entities/photo_source.dart';
 import 'package:moviles_auth/features/avatar/domain/entities/picked_photo.dart';
 import 'package:moviles_auth/features/posts/domain/entities/post.dart';
 
@@ -6,9 +7,13 @@ abstract class PostRepository {
   Future<List<Post>> fetchFeed({required int page, required int size});
   Future<List<Post>> fetchMine({int limit = 3});
   Future<void> create(String content, {String? imagePath});
+  Future<void> delete(String postId);
   Future<void> like(String postId);
   Future<void> unlike(String postId);
-  Future<PickedPhoto?> pickImage();
+  Future<PickedPhoto?> pickImage(PhotoSource source);
   Future<String> uploadImage(PickedPhoto photo);
-  Future<String> imageUrl(String path);
+  Future<void> removeImage(String path);
+
+  /// Signed URL of every path, in a single request. Paths that could not be signed are left out.
+  Future<Map<String, String>> imageUrls(List<String> paths);
 }

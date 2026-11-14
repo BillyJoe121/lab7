@@ -13,7 +13,9 @@ class ProfilePage extends StatelessWidget {
   final List<Post> posts;
   final bool isUploading;
   final Function() onChangePhoto;
+  final Function() onRemovePhoto;
   final Function(Post) onLike;
+  final Function(Post) onDelete;
   final Function() onSignOut;
 
   const ProfilePage({
@@ -22,7 +24,9 @@ class ProfilePage extends StatelessWidget {
     required this.posts,
     required this.isUploading,
     required this.onChangePhoto,
+    required this.onRemovePhoto,
     required this.onLike,
+    required this.onDelete,
     required this.onSignOut,
   });
 
@@ -66,7 +70,16 @@ class ProfilePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(child: _photo()),
-          const SizedBox(height: 16),
+          if (profile.avatarPath != null)
+            Center(
+              child: TextButton.icon(
+                onPressed: isUploading ? null : () => onRemovePhoto(),
+                icon: const Icon(Icons.hide_image_outlined),
+                label: const Text('Quitar foto'),
+              ),
+            )
+          else
+            const SizedBox(height: 16),
           Text(
             profile.fullName,
             textAlign: TextAlign.center,
@@ -97,7 +110,11 @@ class ProfilePage extends StatelessWidget {
               style: TextStyle(color: AppColors.textSecondary),
             ),
           for (final post in posts)
-            PostCard(post: post, onLike: () => onLike(post)),
+            PostCard(
+              post: post,
+              onLike: () => onLike(post),
+              onDelete: () => onDelete(post),
+            ),
           const SizedBox(height: 24),
           PrimaryButton(label: 'Cerrar sesión', onPressed: () => onSignOut()),
         ],

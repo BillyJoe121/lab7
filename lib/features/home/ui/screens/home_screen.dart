@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:moviles_auth/components/photo_source_sheet.dart';
 import 'package:moviles_auth/features/home/ui/bloc/feed_bloc.dart';
 import 'package:moviles_auth/features/home/ui/bloc/feed_event.dart';
 import 'package:moviles_auth/features/home/ui/bloc/feed_state.dart';
 import 'package:moviles_auth/features/home/ui/pages/feed_page.dart';
 import 'package:moviles_auth/features/home/ui/pages/profile_page.dart';
+import 'package:moviles_auth/features/posts/domain/entities/post.dart';
 
 /// Hosts FeedPage and ProfilePage behind a BottomNavigationBar.
 class HomeScreen extends StatefulWidget {
@@ -46,8 +48,10 @@ class _HomeScreenState extends State<HomeScreen> {
         profile: profile,
         posts: state.myPosts,
         isUploading: state.avatarStatus == AvatarStatus.uploading,
-        onChangePhoto: () => bloc.add(AvatarChangeRequested()),
+        onChangePhoto: () => _choosePhoto(),
+        onRemovePhoto: () => bloc.add(AvatarRemoveRequested()),
         onLike: (post) => bloc.add(FeedLikeToggled(post)),
+        onDelete: (post) => _confirmDelete(post),
         onSignOut: () => bloc.add(SignOutRequested()),
       );
     }
@@ -57,7 +61,36 @@ class _HomeScreenState extends State<HomeScreen> {
       isLoading: state.status == FeedStatus.loading,
       onLoadMore: () => bloc.add(FeedMoreRequested()),
       onLike: (post) => bloc.add(FeedLikeToggled(post)),
+      onDelete: (post) => _confirmDelete(post),
     );
+  }
+
+  Future<void> _choosePhoto() async {
+    final source = await showPhotoSourceSheet(context);
+    if (source == null || !mounted) return;
+    context.read<FeedBloc>().add(AvatarChangeRequested(source));
+  }
+
+  Future<void> _confirmDelete(Post post) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Borrar este post?'),
+        content: const Text('Se borra también su imagen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    context.read<FeedBloc>().add(FeedPostDeleted(post));
   }
 
   @override
@@ -79,6 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
           listenWhen: (previous, current) =>
               previous.avatarStatus != current.avatarStatus &&
               current.avatarStatus == AvatarStatus.failure,
+          listener: (context, state) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.errorMessage ?? 'Algo falló')),
+            );
+          },
+        ),
+        BlocListener<FeedBloc, FeedState>(
+          listenWhen: (previous, current) =>
+              previous.status != current.status &&
+              current.status == FeedStatus.failure,
           listener: (context, state) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.errorMessage ?? 'Algo falló')),
